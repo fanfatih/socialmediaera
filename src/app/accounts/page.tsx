@@ -51,11 +51,14 @@ export default function AccountsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isKaryawan) return;
+    if (!platform || !username || !password) return;
 
     const payload = {
-      platform, username, password,
-      lastUpdatedBy: role,
+      platform,
+      username,
+      password,
+      // PERBAIKAN: Gunakan '||' agar jika role null, dia akan mengirim string "Unknown"
+      lastUpdatedBy: role || "Unknown", 
       lastUpdatedAt: new Date().toISOString()
     };
 
