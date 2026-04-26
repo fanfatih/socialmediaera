@@ -12,6 +12,9 @@ import {
   PieChart, Pie, Cell, BarChart, Bar
 } from "recharts";
 
+export default function Home() {
+  const { monthlyTarget } = useContentStore();
+
 export default function DashboardPage() {
   const { contents, role } = useContentStore();
   const [isMounted, setIsMounted] = useState(false);
