@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import Sidebar from "./Sidebar";
+import Sidebar from "./sidebar";
 import { useContentStore } from "@/store/useContentStore";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
