@@ -12,10 +12,11 @@ export interface BankItem { id: string; url: string; note: string; dateAdded: st
 export interface TeamMember { id: string; name: string; email: string; role: string; status: string; }
 
 interface ContentStore {
-  role: 'ADMIN' | 'MANAGER' | 'KARYAWAN';
-  setRole: (newRole: 'ADMIN' | 'MANAGER' | 'KARYAWAN') => void;
+  role: 'ADMIN' | 'MANAGER' | 'KARYAWAN' | null;
+  setRole: (newRole: 'ADMIN' | 'MANAGER' | 'KARYAWAN' | null) => void;
+  logout: () => void;
   
-  contents: Content[]; accounts: Account[]; bankItems: BankItem[]; pendingMembers: TeamMember[];
+  contents: Content[]; accounts: Account[]; bankItems: BankItem[]; pendingMembers: TeamMember[]; activeMembers: TeamMember[];
 
   fetchAllData: () => Promise<void>;
   
@@ -33,19 +34,23 @@ interface ContentStore {
 
   approveMember: (id: string) => Promise<void>;
   rejectMember: (id: string) => Promise<void>;
-
-  activeMembers: TeamMember[];
   deleteMember: (id: string) => Promise<void>;
 }
 
 export const useContentStore = create<ContentStore>()(
   persist(
     (set, get) => ({
-      activeMembers: [],
-      role: 'ADMIN',
+      role: null, // PERBAIKAN 1: Tanpa tanda kutip
       setRole: (newRole) => set({ role: newRole }),
       
-      contents: [], accounts: [], bankItems: [], pendingMembers: [],
+      // PERBAIKAN 2: Tambahkan fungsi logout di sini
+      logout: () => {
+        set({ role: null });
+        localStorage.removeItem('workspace-auth');
+        sessionStorage.removeItem('workspace-auth');
+      },
+      
+      contents: [], accounts: [], bankItems: [], pendingMembers: [], activeMembers: [],
 
       fetchAllData: async () => {
         const { data: contents } = await supabase.from('contents').select('*').order('created_at', { ascending: false });
@@ -173,7 +178,7 @@ export const useContentStore = create<ContentStore>()(
       rejectMember: async (id) => {
         const { error } = await supabase.from('team_members').update({ status: 'rejected' }).eq('id', id);
         if (!error) { alert("Akun berhasil ditolak."); get().fetchAllData(); }
-      }, // <--- INI KOMA YANG TADI KETINGGALAN
+      },
       
       deleteMember: async (id) => {
         const { error } = await supabase.from('team_members').delete().eq('id', id);
