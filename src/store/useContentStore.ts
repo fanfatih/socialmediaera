@@ -17,11 +17,13 @@ interface ContentStore {
   setCurrentUser: (user: TeamMember | null) => void;
   logout: () => void;
 
-  // DATA SETTINGS & TELEGRAM
   monthlyTarget: number;
   contentPillars: string[];
+  
   telegramToken: string;
   setTelegramToken: (token: string) => void;
+  isTelegramActive: boolean; // STATUS BARU AGAR INGAT SAAT RELOAD
+  setTelegramActive: (active: boolean) => void; // FUNGSI BARU
   
   contents: Content[]; accounts: Account[]; bankItems: BankItem[]; pendingMembers: TeamMember[]; activeMembers: TeamMember[];
 
@@ -48,14 +50,18 @@ export const useContentStore = create<ContentStore>()(
       currentUser: null,
       setCurrentUser: (user) => set({ currentUser: user, role: user ? (user.role as any) : null }),
       logout: () => {
-        set({ role: null, currentUser: null });
+        set({ role: null, currentUser: null, isTelegramActive: false }); // Matikan bot otomatis saat logout
         localStorage.removeItem('workspace-auth');
+        sessionStorage.removeItem('workspace-auth');
       },
 
       monthlyTarget: 30,
       contentPillars: ['Entertaint', 'Promosi', 'Edukasi', 'Inspirasi'],
+      
       telegramToken: "",
       setTelegramToken: (token) => set({ telegramToken: token }),
+      isTelegramActive: false, // DEFAULT MATI
+      setTelegramActive: (active) => set({ isTelegramActive: active }),
 
       contents: [], accounts: [], bankItems: [], pendingMembers: [], activeMembers: [],
 
@@ -65,8 +71,6 @@ export const useContentStore = create<ContentStore>()(
         const { data: bankItems } = await supabase.from('bank_items').select('*').order('date_added', { ascending: false });
         const { data: pendingMembers } = await supabase.from('team_members').select('*').eq('status', 'pending');
         const { data: activeMembers } = await supabase.from('team_members').select('*').eq('status', 'approved');
-        
-        // Tarik Settingan dari Supabase
         const { data: settings } = await supabase.from('app_settings').select('*').eq('id', 1).single();
 
         set({ 
@@ -96,8 +100,8 @@ export const useContentStore = create<ContentStore>()(
     }),
     {
       name: 'workspace-auth',
-      // Simpan Token Telegram agar tidak hilang saat di-refresh!
-      partialize: (state) => ({ role: state.role, currentUser: state.currentUser, telegramToken: state.telegramToken }),
+      // SIMPAN STATUS BOT DI SINI AGAR TIDAK HILANG SAAT RELOAD
+      partialize: (state) => ({ role: state.role, currentUser: state.currentUser, telegramToken: state.telegramToken, isTelegramActive: state.isTelegramActive }),
     }
   )
 );

@@ -2,39 +2,33 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useContentStore } from "@/store/useContentStore";
-import { FolderOpen, ExternalLink, Trash2, Plus, Send, Copy, Zap, Lock } from "lucide-react"; // Tambah ikon Lock
+import { FolderOpen, ExternalLink, Trash2, Plus, Send, Copy, Zap, Lock } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 export default function BankKontenPage() {
-  // Ambil 'role' dari brankas kita
-  const { bankItems, addBankItem, deleteBankItem, role } = useContentStore();
-  const [isMounted, setIsMounted] = useState(false);
+  const { 
+    bankItems, addBankItem, deleteBankItem, role, 
+    telegramToken, setTelegramToken, 
+    isTelegramActive, setTelegramActive // Tarik dari store
+  } = useContentStore();
   
-  // State Form Manual
+  const [isMounted, setIsMounted] = useState(false);
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
-
-  // --- STATE TELEGRAM ---
-  const { telegramToken: botToken, setTelegramToken: setBotToken } = useContentStore();
-  const [isPolling, setIsPolling] = useState(false);
   
   const lastUpdateIdRef = useRef(0); 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Kunci akses untuk Karyawan
   const isKaryawan = role === "KARYAWAN";
 
-  useEffect(() => {
-    setIsMounted(true);
-    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
-  }, []);
-
   const fetchTelegramMessages = async () => {
-    if (!botToken) return;
+    // Tarik token langsung dari store agar selalu mendapat data terbaru
+    const currentToken = useContentStore.getState().telegramToken;
+    if (!currentToken) return;
 
     try {
       const response = await fetch(
-        `https://api.telegram.org/bot${botToken}/getUpdates?offset=${lastUpdateIdRef.current + 1}`
+        `https://api.telegram.org/bot${currentToken}/getUpdates?offset=${lastUpdateIdRef.current + 1}`
       );
       const data = await response.json();
 
@@ -62,7 +56,7 @@ export default function BankKontenPage() {
             const isDuplicate = currentItems.some(item => item.id === newId);
 
             if (!isDuplicate) {
-              addBankItem({
+              useContentStore.getState().addBankItem({
                 id: newId,
                 url: extractedUrl,
                 note: extractedNote,
@@ -79,13 +73,29 @@ export default function BankKontenPage() {
     }
   };
 
+  useEffect(() => {
+    setIsMounted(true);
+    
+    // LOGIKA AUTO-START: Kalau status sebelumnya aktif, langsung jalankan saat reload!
+    if (useContentStore.getState().isTelegramActive && useContentStore.getState().telegramToken) {
+      pollingRef.current = setInterval(fetchTelegramMessages, 5000);
+    }
+
+    return () => { 
+      if (pollingRef.current) clearInterval(pollingRef.current); 
+    };
+  }, []); 
+
   const togglePolling = () => {
-    if (isPolling) {
+    if (isTelegramActive) {
+      // Matikan
       if (pollingRef.current) clearInterval(pollingRef.current);
-      setIsPolling(false);
+      setTelegramActive(false);
     } else {
-      if (!botToken) return alert("Masukkan Token Bot dulu!");
-      setIsPolling(true);
+      // Nyalakan
+      if (!telegramToken) return alert("Masukkan Token Bot dulu!");
+      setTelegramActive(true);
+      fetchTelegramMessages(); // Tarik langsung 1x biar gak nunggu 5 detik
       pollingRef.current = setInterval(fetchTelegramMessages, 5000);
     }
   };
@@ -119,15 +129,13 @@ export default function BankKontenPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="flex flex-col gap-6">
           
-          {/* BANNER TELEGRAM DENGAN LOGIKA ROLE */}
-          <div className={`rounded-xl p-5 text-white shadow-md relative overflow-hidden transition-all duration-500 ${isKaryawan ? 'bg-slate-700 dark:bg-slate-800' : (isPolling ? 'bg-emerald-600' : 'bg-blue-600')}`}>
+          <div className={`rounded-xl p-5 text-white shadow-md relative overflow-hidden transition-all duration-500 ${isKaryawan ? 'bg-slate-700 dark:bg-slate-800' : (isTelegramActive ? 'bg-emerald-600' : 'bg-blue-600')}`}>
             <div className="relative z-10 space-y-4">
               <h3 className="font-bold text-lg flex items-center gap-2">
-                <Send size={18} /> {isKaryawan ? 'Integrasi Telegram' : (isPolling ? 'Telegram Aktif!' : 'Koneksi Telegram')}
+                <Send size={18} /> {isKaryawan ? 'Integrasi Telegram' : (isTelegramActive ? 'Telegram Aktif!' : 'Koneksi Telegram')}
               </h3>
               
               {isKaryawan ? (
-                // Tampilan Khusus Karyawan (Digembok)
                 <div className="bg-white/10 border border-white/20 rounded-lg p-3 text-sm flex items-start gap-2">
                   <Lock size={16} className="mt-0.5 flex-shrink-0 text-slate-300" />
                   <p className="text-slate-200 text-xs leading-relaxed">
@@ -135,33 +143,31 @@ export default function BankKontenPage() {
                   </p>
                 </div>
               ) : (
-                // Tampilan Normal untuk Manager & Admin
                 <>
-                  {!isPolling && (
+                  {!isTelegramActive && (
                     <input 
                       type="password"
                       placeholder="Paste Token Bot di sini..."
-                      value={botToken}
-                      onChange={(e) => setBotToken(e.target.value)}
+                      value={telegramToken}
+                      onChange={(e) => setTelegramToken(e.target.value)}
                       className="w-full p-2 rounded bg-white/20 border border-white/30 text-white placeholder-blue-200 text-xs outline-none focus:ring-2 focus:ring-white/50"
                     />
                   )}
 
                   <button 
                     onClick={togglePolling}
-                    className={`w-full py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${isPolling ? 'bg-white text-emerald-700 shadow-lg shadow-emerald-900/20' : 'bg-white/20 text-white border border-white/40 hover:bg-white/30'}`}
+                    className={`w-full py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${isTelegramActive ? 'bg-white text-emerald-700 shadow-lg shadow-emerald-900/20' : 'bg-white/20 text-white border border-white/40 hover:bg-white/30'}`}
                   >
-                    {isPolling ? <><Zap size={16} fill="currentColor" /> Berhenti Menarik Data</> : 'Hubungkan Bot'}
+                    {isTelegramActive ? <><Zap size={16} fill="currentColor" /> Berhenti Menarik Data</> : 'Hubungkan Bot'}
                   </button>
                   
-                  {isPolling && <p className="text-[10px] text-emerald-100 animate-pulse text-center italic">Bot sedang mendengarkan pesan baru...</p>}
+                  {isTelegramActive && <p className="text-[10px] text-emerald-100 animate-pulse text-center italic">Bot sedang mendengarkan pesan baru...</p>}
                 </>
               )}
             </div>
             <Send size={100} className={`absolute -bottom-4 -right-4 opacity-10 -rotate-12 ${isKaryawan ? 'text-slate-400' : 'text-white'}`} />
           </div>
 
-          {/* Form Manual (Semua Role Bisa) */}
           <div className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm p-5">
             <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <Plus size={18} className="text-gray-400" /> Tambah Manual
@@ -174,7 +180,6 @@ export default function BankKontenPage() {
           </div>
         </div>
 
-        {/* Daftar Referensi */}
         <div className="lg:col-span-2 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Referensi Tersimpan</h2>
@@ -208,7 +213,6 @@ export default function BankKontenPage() {
                     )}
                   </div>
                   
-                  {/* Hapus Item (Digembok untuk Karyawan) */}
                   {!isKaryawan && (
                     <div className="flex sm:flex-col justify-end items-end border-t sm:border-t-0 sm:border-l border-gray-100 dark:border-gray-800 pt-3 sm:pt-0 sm:pl-5">
                       <button onClick={() => deleteBankItem(item.id)} className="p-2 text-red-400 hover:text-red-600 transition-colors self-end sm:self-center"><Trash2 size={18} /></button>
