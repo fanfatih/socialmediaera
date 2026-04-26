@@ -35,11 +35,6 @@ export default function LoginPage() {
         if (error || !user) {
           alert("Email atau password salah!");
         } else if (user.status === 'approved') {
-          if (!rememberMe) {
-            window.addEventListener('beforeunload', () => {
-                if (!rememberMe) localStorage.removeItem('workspace-auth');
-            });
-          }
           setCurrentUser(user);
           router.push("/");
         } else if (user.status === 'pending') {

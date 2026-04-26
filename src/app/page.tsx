@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const inProgress = thisMonthContents.filter(c => c.status === "Idea" || c.status === "In Development" || c.status === "Process").length;
 
   // --- TARGET BULANAN ---
-  const monthlyTarget = 30;
+  const {monthlyTarget} = useContentStore();
   const progressPercentage = Math.min(Math.round((publishedContent / monthlyTarget) * 100), 100);
 
   // --- JADWAL TERDEKAT ---

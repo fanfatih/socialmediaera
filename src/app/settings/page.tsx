@@ -12,13 +12,17 @@ export default function SettingsPage() {
   const [isMounted, setIsMounted] = useState(false);
 
   // State untuk form Settings
+  const { monthlyTarget: storeTarget, contentPillars: storePillars, fetchAllData } = useContentStore(); // Tambahkan ini di atas
   const [monthlyTarget, setMonthlyTarget] = useState(30);
-  const [pillars, setPillars] = useState("Entertaint, Promosi, Edukasi, Inspirasi");
+  const [pillars, setPillars] = useState("");
 
-  useEffect(() => {
-    setIsMounted(true);
-    if (role !== "ADMIN") router.push("/");
-  }, [role, router]);
+// Di dalam useEffect, sinkronkan datanya:
+useEffect(() => {
+  setIsMounted(true);
+  if (role !== "ADMIN") router.push("/");
+  setMonthlyTarget(storeTarget);
+  setPillars(storePillars.join(', '));
+}, [role, router, storeTarget, storePillars]);
 
   if (!isMounted || role !== "ADMIN") return null;
 
@@ -27,6 +31,7 @@ export default function SettingsPage() {
     const { error } = await supabase.from('app_settings').update({ monthly_target: monthlyTarget }).eq('id', 1);
     if (!error) alert("Target bulanan berhasil diperbarui!");
     else alert("Gagal menyimpan target. Pastikan tabel app_settings sudah ada.");
+    fetchAllData();
   };
 
   // Fungsi Simpan Pilar

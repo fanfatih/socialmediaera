@@ -15,7 +15,7 @@ export default function BankKontenPage() {
   const [note, setNote] = useState("");
 
   // --- STATE TELEGRAM ---
-  const [botToken, setBotToken] = useState(""); 
+  const { telegramToken: botToken, setTelegramToken: setBotToken } = useContentStore();
   const [isPolling, setIsPolling] = useState(false);
   
   const lastUpdateIdRef = useRef(0); 
