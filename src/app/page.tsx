@@ -12,14 +12,13 @@ import {
   PieChart, Pie, Cell, BarChart, Bar
 } from "recharts";
 
-export default function Home() {
-  const { monthlyTarget } = useContentStore();
-
 export default function DashboardPage() {
-  const { contents, role } = useContentStore();
+  const { contents, role, monthlyTarget } = useContentStore();
   const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => setIsMounted(true), []);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   if (!isMounted) return null;
 
@@ -33,7 +32,6 @@ export default function DashboardPage() {
   const inProgress = thisMonthContents.filter(c => c.status === "Idea" || c.status === "In Development" || c.status === "Process").length;
 
   // --- TARGET BULANAN ---
-  const {monthlyTarget} = useContentStore();
   const progressPercentage = Math.min(Math.round((publishedContent / monthlyTarget) * 100), 100);
 
   // --- JADWAL TERDEKAT ---
