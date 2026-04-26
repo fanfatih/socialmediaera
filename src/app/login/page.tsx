@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase"; // Import Supabase!
 export default function LoginPage() {
   const [isLoginView, setIsLoginView] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const { setRole } = useContentStore();
+  const { setCurrentUser } = useContentStore();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -35,24 +35,36 @@ export default function LoginPage() {
         if (error || !user) {
           alert("Email atau password salah!");
         } else if (user.status === 'approved') {
-          
-          // LOGIKA REMEMBER ME:
           if (!rememberMe) {
-            // Jika tidak dicentang, simpan di session (hilang saat browser tutup)
-            // Kita bisa akali dengan menghapus localStorage saat window ditutup
             window.addEventListener('beforeunload', () => {
                 if (!rememberMe) localStorage.removeItem('workspace-auth');
             });
           }
-
-          setRole(user.role as any);
+          setCurrentUser(user);
           router.push("/");
-        } else {
-          alert("Akun belum di-approve Admin!");
+        } else if (user.status === 'pending') {
+          alert("Akunmu sedang ditinjau. Tunggu persetujuan dari Admin ya!");
+        } else if (user.status === 'rejected') {
+          alert("Akses ditolak oleh Admin.");
         }
       } else {
-        // ... Logika Register tetap sama
+        // INI KODE REGISTER YANG KEMARIN HILANG TERTELAN BUMI
+        const { error } = await supabase
+          .from('team_members')
+          .insert([{ name, email, password, role: selectedRole, status: 'pending' }]);
+
+        if (error) {
+          if (error.code === '23505') alert("Email ini sudah pernah didaftarkan!");
+          else alert("Gagal mendaftar. Silakan coba lagi.");
+        } else {
+          alert("Berhasil mendaftar! Tunggu Admin melakukan Approve sebelum kamu bisa masuk.");
+          setIsLoginView(true); // Lempar balik ke tampilan Login
+          setPassword(""); // Kosongkan password
+        }
       }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan.");
     } finally {
       setIsLoading(false);
     }

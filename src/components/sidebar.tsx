@@ -20,7 +20,8 @@ export default function Sidebar() {
   const router = useRouter();
 
   const handleLogout = () => {
-    if (confirm("Yakin ingin keluar dari Workspace?")) {
+    if (confirm("Yakin ingin keluar?")) {
+      logout(); // Bersihkan store & storage
       router.push("/login");
     }
   };
@@ -65,13 +66,22 @@ export default function Sidebar() {
 
       {/* FOOTER SIDEBAR (Profil & Logout) */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
-        <div className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50">
-          <UserCircle2 size={18} className="text-emerald-600" />
-          <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-bold text-gray-400">Akses Anda:</span>
+        <Link href="/profile" className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors group cursor-pointer border border-transparent hover:border-emerald-200 dark:hover:border-emerald-800">
+          <UserCircle2 size={18} className="text-emerald-600 group-hover:scale-110 transition-transform" />
+          <div className="flex flex-col flex-1">
+            <span className="text-[10px] uppercase font-bold text-gray-400">Pengaturan Akun</span>
             <strong className="text-gray-900 dark:text-white leading-tight">{role}</strong>
           </div>
-        </div>
+        </Link>
+
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2.5 w-full rounded-md text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+        >
+          <LogOut size={18} />
+          <span>Keluar Akun</span>
+        </button>
+      </div>
 
         <button 
           onClick={handleLogout}

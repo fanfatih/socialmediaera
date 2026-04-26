@@ -13,7 +13,8 @@ export interface TeamMember { id: string; name: string; email: string; role: str
 
 interface ContentStore {
   role: 'ADMIN' | 'MANAGER' | 'KARYAWAN' | null;
-  setRole: (newRole: 'ADMIN' | 'MANAGER' | 'KARYAWAN' | null) => void;
+  currentUser: TeamMember | null; // MEMORI BARU: Simpan data lengkap user
+  setCurrentUser: (user: TeamMember | null) => void; // FUNGSI BARU
   logout: () => void;
   
   contents: Content[]; accounts: Account[]; bankItems: BankItem[]; pendingMembers: TeamMember[]; activeMembers: TeamMember[];
@@ -35,17 +36,23 @@ interface ContentStore {
   approveMember: (id: string) => Promise<void>;
   rejectMember: (id: string) => Promise<void>;
   deleteMember: (id: string) => Promise<void>;
+  
+  updateProfile: (id: string, email: string, password: string) => Promise<boolean>; // FUNGSI BARU: Ganti Password
 }
 
 export const useContentStore = create<ContentStore>()(
   persist(
     (set, get) => ({
-      role: null, // PERBAIKAN 1: Tanpa tanda kutip
-      setRole: (newRole) => set({ role: newRole }),
+      role: null,
+      currentUser: null,
       
-      // PERBAIKAN 2: Tambahkan fungsi logout di sini
+      setCurrentUser: (user) => set({ 
+        currentUser: user, 
+        role: user ? (user.role as any) : null 
+      }),
+      
       logout: () => {
-        set({ role: null });
+        set({ role: null, currentUser: null });
         localStorage.removeItem('workspace-auth');
         sessionStorage.removeItem('workspace-auth');
       },
@@ -69,50 +76,15 @@ export const useContentStore = create<ContentStore>()(
       },
 
       addContent: async (content) => {
-        const { error } = await supabase.from('contents').insert([{
-          title: content.title,
-          status: content.status,
-          publish_date: content.publishDate, 
-          platforms: content.platforms,
-          pillar: content.pillar,
-          reference_url: content.referenceUrl, 
-          caption: content.caption,
-          copywriting: content.copywriting,
-          link_video: content.linkVideo 
-        }]);
-        
-        if (error) {
-          console.error("Gagal simpan konten:", error);
-          alert("Gagal menyimpan jadwal ke database.");
-        } else {
-          get().fetchAllData();
-        }
+        const { error } = await supabase.from('contents').insert([{ title: content.title, status: content.status, publish_date: content.publishDate, platforms: content.platforms, pillar: content.pillar, reference_url: content.referenceUrl, caption: content.caption, copywriting: content.copywriting, link_video: content.linkVideo }]);
+        if (error) { console.error(error); alert("Gagal menyimpan jadwal."); } else get().fetchAllData();
       },
 
       updateContent: async (id, updatedData) => {
-        const dbPayload: any = {
-          title: updatedData.title,
-          status: updatedData.status,
-          publish_date: updatedData.publishDate,
-          platforms: updatedData.platforms,
-          pillar: updatedData.pillar,
-          reference_url: updatedData.referenceUrl,
-          caption: updatedData.caption,
-          copywriting: updatedData.copywriting,
-          link_video: updatedData.linkVideo,
-          revision_note: updatedData.revisionNote,
-          live_url: updatedData.liveUrl,
-          views: updatedData.views,
-          likes: updatedData.likes,
-          comments: updatedData.comments,
-          shares: updatedData.shares
-        };
-
+        const dbPayload: any = { title: updatedData.title, status: updatedData.status, publish_date: updatedData.publishDate, platforms: updatedData.platforms, pillar: updatedData.pillar, reference_url: updatedData.referenceUrl, caption: updatedData.caption, copywriting: updatedData.copywriting, link_video: updatedData.linkVideo, revision_note: updatedData.revisionNote, live_url: updatedData.liveUrl, views: updatedData.views, likes: updatedData.likes, comments: updatedData.comments, shares: updatedData.shares };
         Object.keys(dbPayload).forEach(key => dbPayload[key] === undefined && delete dbPayload[key]);
-
         const { error } = await supabase.from('contents').update(dbPayload).eq('id', id);
-        if (error) console.error("Gagal update konten:", error);
-        else get().fetchAllData();
+        if (!error) get().fetchAllData();
       },
 
       updateDate: async (id, newDate) => {
@@ -126,26 +98,13 @@ export const useContentStore = create<ContentStore>()(
       },
 
       addAccount: async (account) => {
-        const { error } = await supabase.from('accounts').insert([{
-          platform: account.platform,
-          username: account.username,
-          password: account.password,
-          last_updated_by: account.lastUpdatedBy,
-          last_updated_at: account.lastUpdatedAt
-        }]);
+        const { error } = await supabase.from('accounts').insert([{ platform: account.platform, username: account.username, password: account.password, last_updated_by: account.lastUpdatedBy, last_updated_at: account.lastUpdatedAt }]);
         if (!error) get().fetchAllData();
       },
 
       updateAccount: async (id, updatedData) => {
-        const dbPayload: any = {
-          platform: updatedData.platform,
-          username: updatedData.username,
-          password: updatedData.password,
-          last_updated_by: updatedData.lastUpdatedBy,
-          last_updated_at: updatedData.lastUpdatedAt
-        };
+        const dbPayload: any = { platform: updatedData.platform, username: updatedData.username, password: updatedData.password, last_updated_by: updatedData.lastUpdatedBy, last_updated_at: updatedData.lastUpdatedAt };
         Object.keys(dbPayload).forEach(key => dbPayload[key] === undefined && delete dbPayload[key]);
-
         const { error } = await supabase.from('accounts').update(dbPayload).eq('id', id);
         if (!error) get().fetchAllData();
       },
@@ -156,12 +115,7 @@ export const useContentStore = create<ContentStore>()(
       },
 
       addBankItem: async (item) => {
-        const { error } = await supabase.from('bank_items').insert([{
-          url: item.url,
-          note: item.note,
-          source: item.source,
-          date_added: item.dateAdded 
-        }]);
+        const { error } = await supabase.from('bank_items').insert([{ url: item.url, note: item.note, source: item.source, date_added: item.dateAdded }]);
         if (!error) get().fetchAllData();
       },
 
@@ -172,27 +126,37 @@ export const useContentStore = create<ContentStore>()(
 
       approveMember: async (id) => {
         const { error } = await supabase.from('team_members').update({ status: 'approved' }).eq('id', id);
-        if (!error) { alert("Akun berhasil di-Approve!"); get().fetchAllData(); }
+        if (!error) { alert("Akun di-Approve!"); get().fetchAllData(); }
       },
       
       rejectMember: async (id) => {
         const { error } = await supabase.from('team_members').update({ status: 'rejected' }).eq('id', id);
-        if (!error) { alert("Akun berhasil ditolak."); get().fetchAllData(); }
+        if (!error) { alert("Akun ditolak."); get().fetchAllData(); }
       },
       
       deleteMember: async (id) => {
         const { error } = await supabase.from('team_members').delete().eq('id', id);
-        if (!error) { 
-          alert("Akun karyawan berhasil dihapus permanen."); 
-          get().fetchAllData(); 
+        if (!error) { alert("Akun dihapus permanen."); get().fetchAllData(); } else alert("Gagal menghapus.");
+      },
+
+      // FUNGSI UPDATE PROFIL (EMAIL & PASSWORD)
+      updateProfile: async (id, email, password) => {
+        const { error } = await supabase.from('team_members').update({ email, password }).eq('id', id);
+        if (!error) {
+          alert("Profil berhasil diperbarui!");
+          // Update juga data di memori browser
+          set((state) => ({ currentUser: state.currentUser ? { ...state.currentUser, email, password } : null }));
+          return true;
         } else {
-          alert("Gagal menghapus karyawan.");
+          alert("Gagal memperbarui. Mungkin email sudah dipakai orang lain.");
+          return false;
         }
       }
     }),
     {
       name: 'workspace-auth',
-      partialize: (state) => ({ role: state.role }),
+      // Simpan role DAN currentUser ke local storage agar ingat siapa yang login
+      partialize: (state) => ({ role: state.role, currentUser: state.currentUser }),
     }
   )
 );
