@@ -16,7 +16,7 @@ export default function ProfilePage() {
     setIsMounted(true);
     if (currentUser) {
       setEmail(currentUser.email);
-      setPassword(currentUser.password);
+      setPassword(currentUser.password || ""); // <-- TAMBAHKAN || "" DI SINI
     }
   }, [currentUser]);
 
