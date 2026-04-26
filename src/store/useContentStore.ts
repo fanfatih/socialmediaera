@@ -9,7 +9,7 @@ export type Pillar = 'Entertaint' | 'Promosi' | 'Edukasi' | 'Inspirasi';
 export interface Content { id: string; title: string; status: Status; publishDate: string; platforms: Platform[]; pillar: Pillar; referenceUrl?: string; caption?: string; copywriting?: string; linkVideo?: string; revisionNote?: string; liveUrl?: string; views?: number; likes?: number; comments?: number; shares?: number; }
 export interface Account { id: string; platform: string; username: string; password: string; lastUpdatedBy: string; lastUpdatedAt: string; }
 export interface BankItem { id: string; url: string; note: string; dateAdded: string; source: 'Manual' | 'Telegram'; }
-export interface TeamMember { id: string; name: string; email: string; role: string; status: string; }
+export interface TeamMember { id: string; name: string; email: string; password?: string; role: string; status: string; }
 
 interface ContentStore {
   role: 'ADMIN' | 'MANAGER' | 'KARYAWAN' | null;
