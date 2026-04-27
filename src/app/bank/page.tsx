@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { useContentStore } from "@/store/useContentStore";
 import { FolderOpen, ExternalLink, Trash2, Plus, Send, Copy, Zap, Lock } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { supabase } from "@/lib/supabase"; // Wajib di-import
 
 export default function BankKontenPage() {
   const { 
     bankItems, addBankItem, deleteBankItem, role, 
     telegramToken, setTelegramToken, 
-    isTelegramActive, setTelegramActive // Tarik dari store
+    isTelegramActive, setTelegramActive 
   } = useContentStore();
   
   const [isMounted, setIsMounted] = useState(false);
@@ -22,7 +23,6 @@ export default function BankKontenPage() {
   const isKaryawan = role === "KARYAWAN";
 
   const fetchTelegramMessages = async () => {
-    // Tarik token langsung dari store agar selalu mendapat data terbaru
     const currentToken = useContentStore.getState().telegramToken;
     if (!currentToken) return;
 
@@ -42,27 +42,14 @@ export default function BankKontenPage() {
 
             let extractedUrl = "Pesan Telegram (Tanpa Link)";
             let extractedNote = messageText.trim();
-
-            if (foundUrls) {
-              extractedUrl = foundUrls[0];
-              extractedNote = messageText.replace(extractedUrl, '').trim();
-            }
-
-            if (!extractedNote) {
-              extractedNote = "Tanpa catatan tambahan.";
-            }
+            if (foundUrls) { extractedUrl = foundUrls[0]; extractedNote = messageText.replace(extractedUrl, '').trim(); }
+            if (!extractedNote) extractedNote = "Tanpa catatan tambahan.";
 
             const currentItems = useContentStore.getState().bankItems;
             const isDuplicate = currentItems.some(item => item.id === newId);
 
             if (!isDuplicate) {
-              useContentStore.getState().addBankItem({
-                id: newId,
-                url: extractedUrl,
-                note: extractedNote,
-                dateAdded: new Date().toISOString(),
-                source: "Telegram"
-              });
+              useContentStore.getState().addBankItem({ id: newId, url: extractedUrl, note: extractedNote, dateAdded: new Date().toISOString(), source: "Telegram" });
             }
           }
           lastUpdateIdRef.current = update.update_id;
@@ -75,27 +62,25 @@ export default function BankKontenPage() {
 
   useEffect(() => {
     setIsMounted(true);
-    
-    // LOGIKA AUTO-START: Kalau status sebelumnya aktif, langsung jalankan saat reload!
     if (useContentStore.getState().isTelegramActive && useContentStore.getState().telegramToken) {
       pollingRef.current = setInterval(fetchTelegramMessages, 5000);
     }
-
-    return () => { 
-      if (pollingRef.current) clearInterval(pollingRef.current); 
-    };
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, []); 
 
-  const togglePolling = () => {
+  // --- PERBAIKAN DI SINI ---
+  const togglePolling = async () => {
     if (isTelegramActive) {
-      // Matikan
       if (pollingRef.current) clearInterval(pollingRef.current);
       setTelegramActive(false);
     } else {
-      // Nyalakan
       if (!telegramToken) return alert("Masukkan Token Bot dulu!");
+      
+      // SIMPAN TOKEN KE SUPABASE
+      await supabase.from('app_settings').update({ telegram_token: telegramToken }).eq('id', 1);
+      
       setTelegramActive(true);
-      fetchTelegramMessages(); // Tarik langsung 1x biar gak nunggu 5 detik
+      fetchTelegramMessages();
       pollingRef.current = setInterval(fetchTelegramMessages, 5000);
     }
   };
@@ -105,17 +90,11 @@ export default function BankKontenPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) return;
-    addBankItem({
-      id: Math.random().toString(36).substr(2, 9),
-      url, note, dateAdded: new Date().toISOString(), source: "Manual"
-    });
+    addBankItem({ id: Math.random().toString(36).substr(2, 9), url, note, dateAdded: new Date().toISOString(), source: "Manual" });
     setUrl(""); setNote("");
   };
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    alert("Catatan disalin!");
-  };
+  const handleCopy = (text: string) => { navigator.clipboard.writeText(text); alert("Catatan disalin!"); };
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col gap-8 pb-12">
@@ -128,7 +107,6 @@ export default function BankKontenPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="flex flex-col gap-6">
-          
           <div className={`rounded-xl p-5 text-white shadow-md relative overflow-hidden transition-all duration-500 ${isKaryawan ? 'bg-slate-700 dark:bg-slate-800' : (isTelegramActive ? 'bg-emerald-600' : 'bg-blue-600')}`}>
             <div className="relative z-10 space-y-4">
               <h3 className="font-bold text-lg flex items-center gap-2">
@@ -145,20 +123,11 @@ export default function BankKontenPage() {
               ) : (
                 <>
                   {!isTelegramActive && (
-                    <input 
-                      type="password"
-                      placeholder="Paste Token Bot di sini..."
-                      value={telegramToken}
-                      onChange={(e) => setTelegramToken(e.target.value)}
-                      className="w-full p-2 rounded bg-white/20 border border-white/30 text-white placeholder-blue-200 text-xs outline-none focus:ring-2 focus:ring-white/50"
-                    />
+                    <input type="password" placeholder="Paste Token Bot di sini..." value={telegramToken} onChange={(e) => setTelegramToken(e.target.value)} className="w-full p-2 rounded bg-white/20 border border-white/30 text-white placeholder-blue-200 text-xs outline-none focus:ring-2 focus:ring-white/50" />
                   )}
 
-                  <button 
-                    onClick={togglePolling}
-                    className={`w-full py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${isTelegramActive ? 'bg-white text-emerald-700 shadow-lg shadow-emerald-900/20' : 'bg-white/20 text-white border border-white/40 hover:bg-white/30'}`}
-                  >
-                    {isTelegramActive ? <><Zap size={16} fill="currentColor" /> Berhenti Menarik Data</> : 'Hubungkan Bot'}
+                  <button onClick={togglePolling} className={`w-full py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${isTelegramActive ? 'bg-white text-emerald-700 shadow-lg shadow-emerald-900/20' : 'bg-white/20 text-white border border-white/40 hover:bg-white/30'}`}>
+                    {isTelegramActive ? <><Zap size={16} fill="currentColor" /> Berhenti Menarik Data</> : 'Hubungkan Bot & Simpan'}
                   </button>
                   
                   {isTelegramActive && <p className="text-[10px] text-emerald-100 animate-pulse text-center italic">Bot sedang mendengarkan pesan baru...</p>}
@@ -185,7 +154,6 @@ export default function BankKontenPage() {
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Referensi Tersimpan</h2>
             <span className="text-sm font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">{bankItems.length} Item</span>
           </div>
-
           {bankItems.length === 0 ? (
             <div className="flex-1 bg-white dark:bg-[#121212] border border-dashed border-gray-300 dark:border-gray-800 rounded-xl flex flex-col items-center justify-center p-12 text-gray-500">
               <FolderOpen size={48} className="mb-4 opacity-20" />
@@ -197,22 +165,17 @@ export default function BankKontenPage() {
                 <div key={item.id} className="bg-white dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-xl p-5 shadow-sm flex flex-col sm:flex-row gap-5">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${item.source === 'Telegram' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
-                        {item.source}
-                      </span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${item.source === 'Telegram' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>{item.source}</span>
                       <span className="text-xs text-gray-400">{format(parseISO(item.dateAdded), "dd MMM, HH:mm")}</span>
                     </div>
-                    <a href={item.url} target="_blank" className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-sm flex items-start gap-1.5 break-all line-clamp-2 italic">
-                      <ExternalLink size={16} className="flex-shrink-0 mt-0.5" /> {item.url}
-                    </a>
+                    <a href={item.url} target="_blank" className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-sm flex items-start gap-1.5 break-all line-clamp-2 italic"><ExternalLink size={16} className="flex-shrink-0 mt-0.5" /> {item.url}</a>
                     {item.note && (
                       <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-gray-800 p-3 rounded-lg text-sm text-gray-700 dark:text-gray-300 relative group">
                         <p className="pr-6 whitespace-pre-wrap">{item.note}</p>
-                        <button onClick={() => handleCopy(item.note)} className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" title="Salin catatan"><Copy size={14} /></button>
+                        <button onClick={() => handleCopy(item.note)} className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"><Copy size={14} /></button>
                       </div>
                     )}
                   </div>
-                  
                   {!isKaryawan && (
                     <div className="flex sm:flex-col justify-end items-end border-t sm:border-t-0 sm:border-l border-gray-100 dark:border-gray-800 pt-3 sm:pt-0 sm:pl-5">
                       <button onClick={() => deleteBankItem(item.id)} className="p-2 text-red-400 hover:text-red-600 transition-colors self-end sm:self-center"><Trash2 size={18} /></button>

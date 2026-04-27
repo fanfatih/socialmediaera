@@ -22,8 +22,8 @@ interface ContentStore {
   
   telegramToken: string;
   setTelegramToken: (token: string) => void;
-  isTelegramActive: boolean; // STATUS BARU AGAR INGAT SAAT RELOAD
-  setTelegramActive: (active: boolean) => void; // FUNGSI BARU
+  isTelegramActive: boolean; 
+  setTelegramActive: (active: boolean) => void; 
   
   contents: Content[]; accounts: Account[]; bankItems: BankItem[]; pendingMembers: TeamMember[]; activeMembers: TeamMember[];
 
@@ -50,7 +50,7 @@ export const useContentStore = create<ContentStore>()(
       currentUser: null,
       setCurrentUser: (user) => set({ currentUser: user, role: user ? (user.role as any) : null }),
       logout: () => {
-        set({ role: null, currentUser: null, isTelegramActive: false }); // Matikan bot otomatis saat logout
+        set({ role: null, currentUser: null, isTelegramActive: false }); 
         localStorage.removeItem('workspace-auth');
         sessionStorage.removeItem('workspace-auth');
       },
@@ -60,7 +60,7 @@ export const useContentStore = create<ContentStore>()(
       
       telegramToken: "",
       setTelegramToken: (token) => set({ telegramToken: token }),
-      isTelegramActive: false, // DEFAULT MATI
+      isTelegramActive: false, 
       setTelegramActive: (active) => set({ isTelegramActive: active }),
 
       contents: [], accounts: [], bankItems: [], pendingMembers: [], activeMembers: [],
@@ -80,7 +80,8 @@ export const useContentStore = create<ContentStore>()(
           pendingMembers: pendingMembers || [],
           activeMembers: activeMembers || [],
           monthlyTarget: settings?.monthly_target || 30,
-          contentPillars: settings?.pillars || ['Entertaint', 'Promosi', 'Edukasi', 'Inspirasi']
+          contentPillars: settings?.pillars || ['Entertaint', 'Promosi', 'Edukasi', 'Inspirasi'],
+          telegramToken: settings?.telegram_token || "" // <--- KITA TARIK DARI DB SEKARANG!
         });
       },
 
@@ -100,8 +101,8 @@ export const useContentStore = create<ContentStore>()(
     }),
     {
       name: 'workspace-auth',
-      // SIMPAN STATUS BOT DI SINI AGAR TIDAK HILANG SAAT RELOAD
-      partialize: (state) => ({ role: state.role, currentUser: state.currentUser, telegramToken: state.telegramToken, isTelegramActive: state.isTelegramActive }),
+      // Status aktif bot tetap disimpan di browser lokal agar tidak bentrok dengan laptop orang lain
+      partialize: (state) => ({ role: state.role, currentUser: state.currentUser, isTelegramActive: state.isTelegramActive }),
     }
   )
 );
