@@ -15,11 +15,12 @@ const menuItems = [
   { name: "Akun Sosmed", icon: Shield, href: "/accounts" }, 
 ];
 
-// PERUBAHAN: Menambahkan props onClose
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { role, logout } = useContentStore();
+  
+  // PERUBAHAN: Memanggil unreadCount dan markNotifAsRead dari brankas
+  const { role, logout, unreadCount, markNotifAsRead } = useContentStore();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -52,7 +53,15 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         {menuItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <Link key={item.name} href={item.href}
+            <Link 
+              key={item.name} 
+              href={item.href}
+              // PERUBAHAN: Kalau menu Approvals diklik, jalankan fungsi tandai sudah dibaca
+              onClick={() => {
+                if (item.name === "Approvals") {
+                  markNotifAsRead();
+                }
+              }}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                 isActive 
                   ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white" 
@@ -60,7 +69,14 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               }`}
             >
               <item.icon size={18} />
-              {item.name}
+              
+              {/* flex-1 akan mendorong badge notifikasi ke ujung kanan */}
+              <span className="flex-1">{item.name}</span>
+
+              {/* PERUBAHAN: Tampilkan Titik Merah jika ini menu Approvals dan ada notif */}
+              {item.name === "Approvals" && unreadCount > 0 && (
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
+              )}
             </Link>
           );
         })}

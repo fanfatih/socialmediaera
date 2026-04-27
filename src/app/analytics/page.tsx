@@ -5,6 +5,8 @@ import { useContentStore } from "@/store/useContentStore";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { ExternalLink, Link as LinkIcon, Eye, Heart, MessageCircle, Share2, BarChart2, Download, X } from "lucide-react";
 import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function AnalyticsPage() {
   const { contents, updateContent } = useContentStore();
@@ -15,6 +17,28 @@ export default function AnalyticsPage() {
 
   if (!isMounted) return null;
 
+  const exportToPDF = () => {
+  const doc = new jsPDF();
+  doc.text("Laporan Performa Konten - Social Media Era", 14, 15);
+  
+  const tableData = contents.map(c => [
+    c.title, c.status, c.pillar, c.platforms.join(', '), c.views || 0
+  ]);
+
+  autoTable(doc, {
+    head: [['Judul', 'Status', 'Pillar', 'Platform', 'Views']],
+    body: tableData,
+    startY: 25
+  });
+
+  doc.save(`Laporan_Analitik_${new Date().toLocaleDateString()}.pdf`);
+};
+
+// Pasang button-nya di UI:
+<button onClick={exportToPDF} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">
+  Export PDF
+</button>
+  
   // Hanya ambil konten yang sudah Approved atau Published
   const trackableContents = contents.filter(c => c.status === "Approved" || c.status === "Published");
 
