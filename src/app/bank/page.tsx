@@ -23,20 +23,28 @@ export default function BankKontenPage() {
     setIsRefreshing(true);
     
     try {
-      // Menarik data terbaru langsung dari Supabase
       const { data, error } = await supabase
-        .from('bank_items') // Sesuaikan dengan nama tabelmu
+        .from('bank_items') 
         .select('*');
-        // .order('dateAdded', { ascending: false }); // Buka komen ini kalau datanya mau diurutkan dari yang terbaru
+        // .order('created_at', { ascending: false }); // Gunakan created_at jika ingin mengurutkan
 
       if (data && !error) {
-        // Memasukkan data baru ke dalam state bankItems tanpa me-reload halaman
-        useContentStore.setState({ bankItems: data });
+        // --- PERBAIKAN DI SINI ---
+        // Kita "terjemahkan" datanya agar formatnya pas dengan yang diminta frontend
+        const formattedData = data.map((item) => ({
+          id: item.id,
+          url: item.url,
+          note: item.note,
+          source: item.source,
+          // Ambil dari dateAdded (jika ada), atau created_at (dari Supabase), atau waktu saat ini
+          dateAdded: item.dateAdded || item.created_at || new Date().toISOString(),
+        }));
+
+        useContentStore.setState({ bankItems: formattedData });
       }
     } catch (error) {
       console.error("Gagal refresh data:", error);
     } finally {
-      // Matikan animasi loading setelah setengah detik agar tidak terlalu cepat berkedip
       setTimeout(() => setIsRefreshing(false), 500);
     }
   };
