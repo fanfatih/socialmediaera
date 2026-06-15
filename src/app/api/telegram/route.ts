@@ -30,14 +30,12 @@ export async function POST(req: Request) {
 
     // Simpan langsung ke Supabase dari sisi Server
     const { error } = await supabase
-      .from('bank_items') // PENTING: Ganti dengan nama tabel Supabase kamu kalau beda!
+      .from('bank_items') 
       .insert([
         { 
-          id: `tg-${messageId}`, 
           url: extractedUrl, 
           note: extractedNote, 
           source: 'Telegram' 
-          // Tanggal otomatis diset dari Supabase jika kolom dateAdded pakai default now()
         }
       ]);
 
