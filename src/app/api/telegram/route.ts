@@ -35,7 +35,8 @@ export async function POST(req: Request) {
         { 
           url: extractedUrl, 
           note: extractedNote, 
-          source: 'Telegram' 
+          source: 'Telegram',
+          dateAdded: new Date().toISOString()
         }
       ]);
 
