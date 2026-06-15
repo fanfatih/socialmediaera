@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useContentStore } from "@/store/useContentStore";
-import { FolderOpen, ExternalLink, Trash2, Plus, Send, Copy, Zap, Lock } from "lucide-react";
+import { FolderOpen, ExternalLink, Trash2, Plus, Send, Copy, Zap, Lock, RefreshCw } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { supabase } from "@/lib/supabase"; // Wajib di-import
 
@@ -16,6 +16,30 @@ export default function BankKontenPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    
+    try {
+      // Menarik data terbaru langsung dari Supabase
+      const { data, error } = await supabase
+        .from('bank_items') // Sesuaikan dengan nama tabelmu
+        .select('*');
+        // .order('dateAdded', { ascending: false }); // Buka komen ini kalau datanya mau diurutkan dari yang terbaru
+
+      if (data && !error) {
+        // Memasukkan data baru ke dalam state bankItems tanpa me-reload halaman
+        useContentStore.setState({ bankItems: data });
+      }
+    } catch (error) {
+      console.error("Gagal refresh data:", error);
+    } finally {
+      // Matikan animasi loading setelah setengah detik agar tidak terlalu cepat berkedip
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
   
   const lastUpdateIdRef = useRef(0); 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -176,7 +200,17 @@ export default function BankKontenPage() {
         <div className="lg:col-span-2 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">Referensi Tersimpan</h2>
-            <span className="text-sm font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">{bankItems.length} Item</span>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={handleRefresh} 
+                disabled={isRefreshing}
+                className="flex items-center gap-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+                <span className="hidden sm:inline">{isRefreshing ? "Memperbarui..." : "Refresh"}</span>
+              </button>
+              <span className="text-sm font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">{bankItems.length} Item</span>
+            </div>
           </div>
           {bankItems.length === 0 ? (
             <div className="flex-1 bg-white dark:bg-[#121212] border border-dashed border-gray-300 dark:border-gray-800 rounded-xl flex flex-col items-center justify-center p-12 text-gray-500">
