@@ -25,19 +25,17 @@ export default function BankKontenPage() {
     try {
       const { data, error } = await supabase
         .from('bank_items') 
-        .select('*');
-        // .order('created_at', { ascending: false }); // Gunakan created_at jika ingin mengurutkan
+        .select('*')
+        .order('created_at', { ascending: false }); // Biar otomatis urut dari yang paling baru
 
       if (data && !error) {
-        // --- PERBAIKAN DI SINI ---
-        // Kita "terjemahkan" datanya agar formatnya pas dengan yang diminta frontend
         const formattedData = data.map((item) => ({
           id: item.id,
           url: item.url,
           note: item.note,
           source: item.source,
-          // Ambil dari dateAdded (jika ada), atau created_at (dari Supabase), atau waktu saat ini
-          dateAdded: item.dateAdded || item.created_at || new Date().toISOString(),
+          // Wajib pakai created_at bawaan Supabase, jangan pakai fallback waktu lokal
+          dateAdded: item.created_at, 
         }));
 
         useContentStore.setState({ bankItems: formattedData });

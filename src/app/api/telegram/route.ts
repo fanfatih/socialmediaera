@@ -35,8 +35,8 @@ export async function POST(req: Request) {
         { 
           url: extractedUrl, 
           note: extractedNote, 
-          source: 'Telegram',
-          dateAdded: new Date().toISOString()
+          source: 'Telegram' 
+          // BARIS dateAdded DIHAPUS SAJA
         }
       ]);
 
