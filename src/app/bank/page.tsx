@@ -101,10 +101,13 @@ export default function BankKontenPage() {
     }
   };
 
-  // --- PERBAIKAN 1: Pisahkan useEffect untuk Hydration ---
   useEffect(() => {
     setIsMounted(true);
-  }, []); 
+    
+    // Tarik data secara otomatis dari Supabase saat web pertama kali dibuka
+    handleRefresh(); 
+    
+  }, []); // <-- Array kosong ini penting, biar dia narik datanya 1x aja di awal
 
   // --- PERBAIKAN 2: useEffect khusus untuk memantau Polling Telegram ---
   useEffect(() => {
